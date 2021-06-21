@@ -24,7 +24,7 @@
     },
       "model": {
           "model_type": "delete",
-          "emb_dim": 128,
+          "emb_dim": 40,
           "attention": false,
           "encoder": "lstm",
           "src_hidden_dim": 512,

@@ -64,31 +64,32 @@ console.setFormatter(formatter)
 logging.getLogger('').addHandler(console)
 
 logging.info('Reading data ...')
-src, tgt = data.read_nmt_data(
-    src=config['data']['src'],
+src, tgt = data.readDataSet(
+    srcFile=config['data']['src'],
     config=config,
-    tgt=config['data']['tgt'],
-    attribute_vocab=config['data']['attribute_vocab'],
-    ngram_attributes=config['data']['ngram_attributes']
+    tgtFile=config['data']['tgt'],
+    attributeVocab=config['data']['attribute_vocab'],
+    useNgrams=config['data']['ngram_attributes']
 )
 
-src_test, tgt_test = data.read_nmt_data(
-    src=config['data']['src_test'],
+srcTest, tgtTest = data.readDataSet(
+    srcFile=config['data']['src_test'],
     config=config,
-    tgt=config['data']['tgt_test'],
-    attribute_vocab=config['data']['attribute_vocab'],
-    ngram_attributes=config['data']['ngram_attributes'],
-    train_src=src,
-    train_tgt=tgt
+    tgtFile=config['data']['tgt_test'],
+    attributeVocab=config['data']['attribute_vocab'],
+    useNgrams=config['data']['ngram_attributes'],
+    trainSrc=src,
+    trainTgt=tgt
 )
+
 logging.info('...done!')
 
-
+arrumar 
 batch_size = config['data']['batch_size']
 max_length = config['data']['max_len']
 src_vocab_size = len(src['tok2id'])
 tgt_vocab_size = len(tgt['tok2id'])
-
+input()
 
 weight_mask = torch.ones(tgt_vocab_size)
 weight_mask[tgt['tok2id']['<pad>']] = 0
