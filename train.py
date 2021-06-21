@@ -40,12 +40,12 @@ parser.add_argument(
 args = parser.parse_args()
 config = json.load(open(args.config, 'r'))
 
-working_dir = config['data']['working_dir']
+workingDir = config['data']['working_dir']
 
-if not os.path.exists(working_dir):
-    os.makedirs(working_dir)
+if not os.path.exists(workingDir):
+    os.makedirs(workingDir)
 
-config_path = os.path.join(working_dir, 'config.json')
+config_path = os.path.join(workingDir, 'config.json')
 if not os.path.exists(config_path):
     with open(config_path, 'w') as f:
         json.dump(config, f)
@@ -54,7 +54,7 @@ if not os.path.exists(config_path):
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='%s/train_log' % working_dir,
+    filename='%s/train_log' % workingDir,
 )
 
 console = logging.StreamHandler()
@@ -84,39 +84,45 @@ srcTest, tgtTest = data.readDataSet(
 
 logging.info('...done!')
 
-arrumar 
-batch_size = config['data']['batch_size']
-max_length = config['data']['max_len']
-src_vocab_size = len(src['tok2id'])
-tgt_vocab_size = len(tgt['tok2id'])
-input()
+#model configs
 
-weight_mask = torch.ones(tgt_vocab_size)
-weight_mask[tgt['tok2id']['<pad>']] = 0
-loss_criterion = nn.CrossEntropyLoss(weight=weight_mask)
+batchSize    = config['data']['batch_size']
+maxLength    = config['data']['max_len']
+srcVocabSize = len(src['tok2id'])
+tgtVocabSize = len(tgt['tok2id'])
+
+weightMask                         = torch.ones(tgtVocabSize)
+weightMask[tgt['tok2id']['<pad>']] = 0
+lossCriterion                      = nn.CrossEntropyLoss(weight=weightMask)
+
 if CUDA:
-    weight_mask = weight_mask.cuda()
-    loss_criterion = loss_criterion.cuda()
+    weightMask    = weightMask.cuda()
+    lossCriterion = lossCriterion.cuda()
 
 torch.manual_seed(config['training']['random_seed'])
 np.random.seed(config['training']['random_seed'])
 
+
+#model definition
+
 model = models.SeqModel(
-    src_vocab_size=src_vocab_size,
-    tgt_vocab_size=tgt_vocab_size,
-    pad_id_src=src['tok2id']['<pad>'],
-    pad_id_tgt=tgt['tok2id']['<pad>'],
+    srcVocabSize=srcVocabSize,
+    tgtVocabSize=tgtVocabSize,
+    padIdSrc=src['tok2id']['<pad>'],
+    padIdTgt=tgt['tok2id']['<pad>'],
+    batchSize=batchSize,
     config=config
 )
 
-logging.info('MODEL HAS %s params' %  model.count_params())
-model, start_epoch = models.attempt_load_model(
+logging.info('MODEL HAS %s params' %  model.countParams())
+model, start_epoch = models.attemptLoadModel(
     model=model,
-    checkpoint_dir=working_dir)
+    checkpointDir=workingDir)
+
 if CUDA:
     model = model.cuda()
 
-writer = SummaryWriter(working_dir)
+writer = SummaryWriter(workingDir)
 
 
 if config['training']['optimizer'] == 'adam':
@@ -128,15 +134,18 @@ elif config['training']['optimizer'] == 'sgd':
 else:
     raise NotImplementedError("Learning method not recommend for task")
 
-epoch_loss = []
-start_since_last_report = time.time()
-words_since_last_report = 0
-losses_since_last_report = []
-best_metric = 0.0
-best_epoch = 0
-cur_metric = 0.0 # log perplexity or BLEU
-num_examples = min(len(src['content']), len(tgt['content']))
-num_batches = num_examples / batch_size
+epochLoss = []
+startSinceLastReport = time.time()
+wordsSinceLastReport = 0
+lossesSinceLastReport = []
+bestMetric = 0.0
+bestEpoch = 0
+curMetric = 0.0 # log perplexity or BLEU
+numExamples = min(len(src['content']), len(tgt['content']))
+numBatches = numExamples / batchSize
+
+input()
+aqui
 
 STEP = 0
 for epoch in range(start_epoch, config['training']['epochs']):
