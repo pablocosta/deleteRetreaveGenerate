@@ -115,9 +115,9 @@ model = models.SeqModel(
 )
 
 logging.info('MODEL HAS %s params' %  model.countParams())
-model, start_epoch = models.attemptLoadModel(
-    model=model,
-    checkpointDir=workingDir)
+model, startEpoch = models.attemptLoadModel(
+    model          = model,
+    checkpointDir  = workingDir)
 
 if CUDA:
     model = model.cuda()
@@ -126,67 +126,65 @@ writer = SummaryWriter(workingDir)
 
 
 if config['training']['optimizer'] == 'adam':
-    lr = config['training']['learning_rate']
+    lr        = config['training']['learning_rate']
     optimizer = optim.Adam(model.parameters(), lr=lr)
 elif config['training']['optimizer'] == 'sgd':
-    lr = config['training']['learning_rate']
+    lr        = config['training']['learning_rate']
     optimizer = optim.SGD(model.parameters(), lr=lr)
 else:
     raise NotImplementedError("Learning method not recommend for task")
 
-epochLoss = []
-startSinceLastReport = time.time()
-wordsSinceLastReport = 0
+epochLoss             = []
+startSinceLastReport  = time.time()
+wordsSinceLastReport  = 0
 lossesSinceLastReport = []
-bestMetric = 0.0
-bestEpoch = 0
-curMetric = 0.0 # log perplexity or BLEU
-numExamples = min(len(src['content']), len(tgt['content']))
-numBatches = numExamples / batchSize
+bestMetric            = 0.0
+bestEpoch             = 0
+curMetric             = 0.0 # log perplexity or BLEU
+numExamples           = min(len(src['content']), len(tgt['content']))
+numBatches            = numExamples / batchSize
 
 input()
 aqui
 
 STEP = 0
-for epoch in range(start_epoch, config['training']['epochs']):
-    if cur_metric > best_metric:
+for epoch in range(startEpoch, config['training']['epochs']):
+    if curMetric > bestMetric:
         # rm old checkpoint
-        for ckpt_path in glob.glob(working_dir + '/model.*'):
+        for ckpt_path in glob.glob(workingDir + '/model.*'):
             os.system("rm %s" % ckpt_path)
         # replace with new checkpoint
-        torch.save(model.state_dict(), working_dir + '/model.%s.ckpt' % epoch)
+        torch.save(model.state_dict(), workingDir + '/model.%s.ckpt' % epoch)
 
-        best_metric = cur_metric
-        best_epoch = epoch - 1
+        bestMetric = curMetric
+        bestEpoch  = epoch - 1
 
     losses = []
-    for i in range(0, num_examples, batch_size):
+    for i in range(0, numExamples, batchSize):
 
         if args.overfit:
             i = 50
 
-        batch_idx = i / batch_size
-
-        input_content, input_aux, output = data.minibatch(
-            src, tgt, i, batch_size, max_length, config['model']['model_type'])
-        input_lines_src, _, srclens, srcmask, _ = input_content
-        input_ids_aux, _, auxlens, auxmask, _ = input_aux
-        input_lines_tgt, output_lines_tgt, _, _, _ = output
+        batchIdx = i / batchSize
+        re-escrever a funçao
+        inputContent, inputAux, outPut = data.minibatch(src, tgt, i, batchSize, maxLength, config['model']['model_type'])
         
-        decoder_logit, decoder_probs = model(
-            input_lines_src, input_lines_tgt, srcmask, srclens,
-            input_ids_aux, auxlens, auxmask)
+        inputLinesSrc, _, srcLens, srcMask, _ = inputContent
+        inputIdsAux, _, auxLens, auxMask, _ = inputAux
+        inputLinesTgt, outputLinesTgt, _, _, _ = outPut
+        
+        decoderLogit, decoderProbs = model(inputLinesSrc, inputLinesTgt, srcMask, srcLens,
+            inputIdsAux, auxLens, auxMask)
 
         optimizer.zero_grad()
 
-        loss = loss_criterion(
-            decoder_logit.contiguous().view(-1, tgt_vocab_size),
-            output_lines_tgt.view(-1)
+        loss = lossCriterion(
+            decoderLogit.contiguous().view(-1, tgtVocabSize), outputLinesTgt.view(-1)
         )
 
         losses.append(loss.item())
-        losses_since_last_report.append(loss.item())
-        epoch_loss.append(loss.item())
+        lossesSinceLastReport.append(loss.item())
+        epochLoss.append(loss.item())
         loss.backward()
         norm = nn.utils.clip_grad_norm_(model.parameters(), config['training']['max_norm'])
 
@@ -194,24 +192,24 @@ for epoch in range(start_epoch, config['training']['epochs']):
 
         optimizer.step()
 
-        if args.overfit or batch_idx % config['training']['batches_per_report'] == 0:
+        if args.overfit or batchIdx % config['training']['batches_per_report'] == 0:
 
-            s = float(time.time() - start_since_last_report)
-            eps = (batch_size * config['training']['batches_per_report']) / s
-            avg_loss = np.mean(losses_since_last_report)
-            info = (epoch, batch_idx, num_batches, eps, avg_loss, cur_metric)
+            s = float(time.time() - startSinceLastReport)
+            eps = (batchSize * config['training']['batches_per_report']) / s
+            avgLoss = np.mean(lossesSinceLastReport)
+            info = (epoch, batchIdx, numBatches, eps, avgLoss, curMetric)
             writer.add_scalar('stats/EPS', eps, STEP)
-            writer.add_scalar('stats/loss', avg_loss, STEP)
+            writer.add_scalar('stats/loss', avgLoss, STEP)
             logging.info('EPOCH: %s ITER: %s/%s EPS: %.2f LOSS: %.4f METRIC: %.4f' % info)
-            start_since_last_report = time.time()
-            words_since_last_report = 0
-            losses_since_last_report = []
+            startSinceLastReport = time.time()
+            wordsSinceLastReport = 0
+            lossesSinceLastReport = []
 
-        # NO SAMPLING!! because weird train-vs-test data stuff would be a pain
+
         STEP += 1
     if args.overfit:
         continue
-
+    aqui
     logging.info('EPOCH %s COMPLETE. EVALUATING...' % epoch)
     start = time.time()
     model.eval()
