@@ -144,8 +144,7 @@ curMetric             = 0.0 # log perplexity or BLEU
 numExamples           = min(len(src['content']), len(tgt['content']))
 numBatches            = numExamples / batchSize
 
-input()
-aqui
+
 
 STEP = 0
 for epoch in range(startEpoch, config['training']['epochs']):
@@ -172,7 +171,7 @@ for epoch in range(startEpoch, config['training']['epochs']):
         inputLinesSrc, _, srcLens, srcMask, _ = inputContent
         inputIdsAux, _, auxLens, auxMask, _ = inputAux
         inputLinesTgt, outputLinesTgt, _, _, _ = outPut
-        re-escrever a funçao do model
+        
         decoderLogit, decoderProbs = model(inputLinesSrc, inputLinesTgt, srcMask, srcLens,
             inputIdsAux, auxLens, auxMask)
 
@@ -209,26 +208,27 @@ for epoch in range(startEpoch, config['training']['epochs']):
         STEP += 1
     if args.overfit:
         continue
-    aqui
+
     logging.info('EPOCH %s COMPLETE. EVALUATING...' % epoch)
     start = time.time()
     model.eval()
-    dev_loss = evaluation.evaluate_lpp(
-            model, src_test, tgt_test, config)
+    
+    devLoss = evaluation.evaluateLpp(model, srcTest, tgtTest, config)
 
-    writer.add_scalar('eval/loss', dev_loss, epoch)
+    writer.add_scalar('eval/loss', devLoss, epoch)
 
     if args.bleu and epoch >= config['training'].get('inference_start_epoch', 1):
+        arrumar aqui
         cur_metric, edit_distance, inputs, preds, golds, auxs = evaluation.inference_metrics(
-            model, src_test, tgt_test, config)
+            model, srcTest, tgtTest, config)
 
-        with open(working_dir + '/auxs.%s' % epoch, 'w') as f:
+        with open(workingDir + '/auxs.%s' % epoch, 'w') as f:
             f.write('\n'.join(auxs) + '\n')
-        with open(working_dir + '/inputs.%s' % epoch, 'w') as f:
+        with open(workingDir + '/inputs.%s' % epoch, 'w') as f:
             f.write('\n'.join(inputs) + '\n')
-        with open(working_dir + '/preds.%s' % epoch, 'w') as f:
+        with open(workingDir + '/preds.%s' % epoch, 'w') as f:
             f.write('\n'.join(preds) + '\n')
-        with open(working_dir + '/golds.%s' % epoch, 'w') as f:
+        with open(workingDir + '/golds.%s' % epoch, 'w') as f:
             f.write('\n'.join(golds) + '\n')
 
         writer.add_scalar('eval/edit_distance', edit_distance, epoch)

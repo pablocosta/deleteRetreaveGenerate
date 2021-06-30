@@ -11,44 +11,51 @@ import editdistance
 import src.data as data
 from src.cuda import CUDA
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# BLEU functions
-#    (ran some comparisons and it matches moses's multi-bleu.perl)
-def bleu_stats(hypothesis, reference):
+
+
+
+
+def bleuStats(hypothesis, reference):
     """Compute statistics for BLEU."""
     stats = []
     stats.append(len(hypothesis))
     stats.append(len(reference))
     for n in range(1, 5):
-        s_ngrams = Counter(
+        sNgrams = Counter(
             [tuple(hypothesis[i:i + n]) for i in range(len(hypothesis) + 1 - n)]
         )
-        r_ngrams = Counter(
+        rNgrams = Counter(
             [tuple(reference[i:i + n]) for i in range(len(reference) + 1 - n)]
         )
-        stats.append(max([sum((s_ngrams & r_ngrams).values()), 0]))
+        stats.append(max([sum((sNgrams & rNgrams).values()), 0]))
         stats.append(max([len(hypothesis) + 1 - n, 0]))
     return stats
+
+
 
 def bleu(stats):
     """Compute BLEU given n-gram statistics."""
     if len(list(filter(lambda x: x == 0, stats))) > 0:
         return 0
     (c, r) = stats[:2]
-    log_bleu_prec = sum(
+    logBleuPrec = sum(
         [math.log(float(x) / y) for x, y in zip(stats[2::2], stats[3::2])]
     ) / 4.
-    return math.exp(min([0, 1 - float(r) / c]) + log_bleu_prec)
+    return math.exp(min([0, 1 - float(r) / c]) + logBleuPrec)
 
+
+def getBleu(hypotheses, reference):
+    """Get validation BLEU score for dev set."""
+    for hyp, ref in zip(hypotheses, reference):
+        stats += np.array(bleuStats(hyp, ref))
+    return 100 * bleu(stats)
 def get_bleu(hypotheses, reference):
     """Get validation BLEU score for dev set."""
     stats = np.array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0.])
     for hyp, ref in zip(hypotheses, reference):
-        stats += np.array(bleu_stats(hyp, ref))
+        stats += np.array(bleuStats(hyp, ref))
     return 100 * bleu(stats)
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 
 def get_edit_distance(hypotheses, reference):
     ed = 0
@@ -141,6 +148,15 @@ def decode_dataset(model, src, tgt, config):
     return inputs, preds, ground_truths, auxs
 
 
+def inferenceMetrics(model, src, tgt, config):
+    """ decode and evaluate bleu """
+    arrumar aqui
+    inputs, preds, goldStadart, auxs = decode_dataset(model, src, tgt, config)
+    
+    bleu = getBleu(preds, goldStadart)
+    
+    
+
 def inference_metrics(model, src, tgt, config):
     """ decode and evaluate bleu """
     inputs, preds, ground_truths, auxs = decode_dataset(
@@ -157,42 +173,38 @@ def inference_metrics(model, src, tgt, config):
     return bleu, edit_distance, inputs, preds, ground_truths, auxs
 
 
-def evaluate_lpp(model, src, tgt, config):
+def evaluateLpp(model, src, tgt, config):
     """ evaluate log perplexity WITHOUT decoding
         (i.e., with teacher forcing)
     """
-    weight_mask = torch.ones(len(tgt['tok2id']))
+    weightMask = torch.ones(len(tgt['tok2id']))
+    weightMask[tgt['tok2id']['<pad>']] = 0
+    lossCriterion = nn.CrossEntropyLoss(weight=weightMask)
     if CUDA:
-        weight_mask = weight_mask.cuda()
-    weight_mask[tgt['tok2id']['<pad>']] = 0
-    loss_criterion = nn.CrossEntropyLoss(weight=weight_mask)
-    if CUDA:
-        loss_criterion = loss_criterion.cuda()
-
+        weightMask    = weightMask.cuda()
+        lossCriterion = lossCriterion.cuda()
     losses = []
-    for j in range(0, len(src['data']), config['data']['batch_size']):
+    
+    for i in range(0, len(src["data"]), config['data']['batch_size']):
         sys.stdout.write("\r%s/%s..." % (j, len(src['data'])))
         sys.stdout.flush()
-
+        
+        
         # get batch
-        input_content, input_aux, output = data.minibatch(
-            src, tgt, j, 
-            config['data']['batch_size'], 
-            config['data']['max_len'], 
-            config['model']['model_type'],
-            is_test=True)
-        input_lines_src, _, srclens, srcmask, _ = input_content
-        input_ids_aux, _, auxlens, auxmask, _ = input_aux
-        input_lines_tgt, output_lines_tgt, _, _, _ = output
+        inputContent, inputAux, output = data.miniBatch(src, tgt, i, config['data']['batch_size'], config['data']['max_len'], config['model']['model_type'], isTest=True)
+        inputLinesSrc, _, srcLens, srcMask, _  = inputContent
+        inputIdsAux, _, auxLens, auxMask, _    = inputAux
+        inputLinesTgt, outputLinesTgt, _, _, _ = output
 
-        decoder_logit, decoder_probs = model(
-            input_lines_src, input_lines_tgt, srcmask, srclens,
-            input_ids_aux, auxlens, auxmask)
+        decoderLogit, decoderProbs = model(
+            inputLinesSrc, inputLinesTgt, srcMask, srcLens,
+            inputIdsAux, auxLens, auxMask)
 
-        loss = loss_criterion(
-            decoder_logit.contiguous().view(-1, len(tgt['tok2id'])),
-            output_lines_tgt.view(-1)
+        loss = lossCriterion(
+            decoderLogit.contiguous().view(-1, len(tgt['tok2id'])),
+            outputLinesTgt.view(-1)
         )
+        
         losses.append(loss.item())
 
     return np.mean(losses)
