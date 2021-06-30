@@ -49,20 +49,15 @@ def getBleu(hypotheses, reference):
     for hyp, ref in zip(hypotheses, reference):
         stats += np.array(bleuStats(hyp, ref))
     return 100 * bleu(stats)
-def get_bleu(hypotheses, reference):
-    """Get validation BLEU score for dev set."""
-    stats = np.array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0.])
+
+
+def getEditDistance(hypotheses, reference):
+    eDistance = 0
     for hyp, ref in zip(hypotheses, reference):
-        stats += np.array(bleuStats(hyp, ref))
-    return 100 * bleu(stats)
+        eDistance += editdistance.eval(hyp, ref)
 
-
-def get_edit_distance(hypotheses, reference):
-    ed = 0
-    for hyp, ref in zip(hypotheses, reference):
-        ed += editdistance.eval(hyp, ref)
-
-    return ed * 1.0 / len(hypotheses)
+    return eDistance * 1.0 / len(hypotheses)
+    
 
 
 def decode_minibatch(max_len, start_id, model, src_input, srclens, srcmask,
@@ -150,27 +145,20 @@ def decode_dataset(model, src, tgt, config):
 
 def inferenceMetrics(model, src, tgt, config):
     """ decode and evaluate bleu """
-    arrumar aqui
     inputs, preds, goldStadart, auxs = decode_dataset(model, src, tgt, config)
     
-    bleu = getBleu(preds, goldStadart)
+    bleu         = getBleu(preds, goldStadart)
+    editdistance = getEditDistance(preds, goldStadart)
     
-    
-
-def inference_metrics(model, src, tgt, config):
-    """ decode and evaluate bleu """
-    inputs, preds, ground_truths, auxs = decode_dataset(
-        model, src, tgt, config)
-
-    bleu = get_bleu(preds, ground_truths)
-    edit_distance = get_edit_distance(preds, ground_truths)
-
     inputs = [' '.join(seq) for seq in inputs]
     preds = [' '.join(seq) for seq in preds]
-    ground_truths = [' '.join(seq) for seq in ground_truths]
+    goldStadart = [' '.join(seq) for seq in goldStadart]
     auxs = [' '.join(seq) for seq in auxs]
 
-    return bleu, edit_distance, inputs, preds, ground_truths, auxs
+    return bleu, editdistance, inputs, preds, goldStadart, auxs
+    
+    
+
 
 
 def evaluateLpp(model, src, tgt, config):

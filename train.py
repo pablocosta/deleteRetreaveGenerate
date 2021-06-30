@@ -218,8 +218,7 @@ for epoch in range(startEpoch, config['training']['epochs']):
     writer.add_scalar('eval/loss', devLoss, epoch)
 
     if args.bleu and epoch >= config['training'].get('inference_start_epoch', 1):
-        arrumar aqui
-        cur_metric, edit_distance, inputs, preds, golds, auxs = evaluation.inference_metrics(
+        curMetric, editDistance, inputs, preds, golds, auxs = evaluation.inferenceMetrics(
             model, srcTest, tgtTest, config)
 
         with open(workingDir + '/auxs.%s' % epoch, 'w') as f:
@@ -231,17 +230,17 @@ for epoch in range(startEpoch, config['training']['epochs']):
         with open(workingDir + '/golds.%s' % epoch, 'w') as f:
             f.write('\n'.join(golds) + '\n')
 
-        writer.add_scalar('eval/edit_distance', edit_distance, epoch)
-        writer.add_scalar('eval/bleu', cur_metric, epoch)
+        writer.add_scalar('eval/edit_distance', editDistance, epoch)
+        writer.add_scalar('eval/bleu', curMetric, epoch)
 
     else:
-        cur_metric = dev_loss
+        cur_metric = devLoss
 
     model.train()
 
     logging.info('METRIC: %s. TIME: %.2fs CHECKPOINTING...' % (
-        cur_metric, (time.time() - start)))
-    avg_loss = np.mean(epoch_loss)
-    epoch_loss = []
+        curMetric, (time.time() - start)))
+    avgLoss = np.mean(epochLoss)
+    epochLoss = []
 
 writer.close()
