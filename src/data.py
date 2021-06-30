@@ -363,8 +363,21 @@ def sampleReplace(lines, distMeasurer, sampleRate, corpusIdx):
     """
     out = [None for _ in range(len(lines))]
     for i, line in enumerate(lines):
-        sims = distMeasurer.mostSimilar(corpusIdx + i)[1:]
-    
+        if random.random() < sampleRate:
+            
+            sims = distMeasurer.mostSimilar(corpusIdx + i)[1:]
+            try:
+                line = next((
+                        tgtAttr.split() for tgtAttr, _, _ in sims
+                        if set(tgtAttr.split()) != set(line[1:-1]) # and tgt_attr != ''   # TODO -- exclude blanks?
+                    ))
+            except StopIteration:
+                line = []
+        # corner case: special tok for empty sequences (just start/end tok)
+        if len(line) == 2:
+            line.insert(1, '<empty>')
+        out[i] = line
+    return out    
 
 def  sample_replace(lines, dist_measurer, sample_rate, corpus_idx):
     """
@@ -399,8 +412,7 @@ def getMiniBatch(lines, tok2Id, index, BatchSize, maxLen, sort=False, idx=None, 
     lines = [["<s>"]+ line[:maxLen] + ["<\s>"] for line in lines[index:index + BatchSize]]
     
     if distMeasurer is not None:
-        alterar a função sample_replace
-        lines = sample_replace(lines, distMeasurer, sampleRate, index)
+        lines = sampleReplace(lines, distMeasurer, sampleRate, index)
     
     lens = [len(line) - 1 for line in lines]
     maxLen = max(lens)
@@ -509,9 +521,9 @@ def miniBatch(srcData, tgtData, idx, batchSize, maxLen, modelType, isTest=False)
         outDataSet  = tgtData
         attributeId = 1 
     
-    arrumar aqui (get_minibatch)
-    inPuts  = get_minibatch(inDataSet["content"], inDataSet["tok2id"], idx, batchSize, maxLen, sort=True)
-    outPuts = get_minibatch(outDataSet["data"], outDataSet["tok2id"], idx, batchSize, maxLen, idx=inPuts[-1])
+    
+    inPuts  = getMiniBatch(inDataSet["content"], inDataSet["tok2id"], idx, batchSize, maxLen, sort=True)
+    outPuts = getMiniBatch(outDataSet["data"], outDataSet["tok2id"], idx, batchSize, maxLen, idx=inPuts[-1])
     if modelType == "delete":
         
         # true length could be less than batch_size at edge of data
@@ -529,13 +541,13 @@ def miniBatch(srcData, tgtData, idx, batchSize, maxLen, modelType, isTest=False)
             # the sample rate to 1 means the output is always replaced with an
             # attribute. So we're still getting attributes even though
             # the method is being fed content. 
-            attributes =  get_minibatch(inDataSet['content'], outDataSet['tok2id'], idx, batchSize, maxLen, idx=inPuts[-1], dist_measurer=outDataSet['dist_measurer'], sample_rate=1.0)
+            attributes =  getMiniBatch(inDataSet['content'], outDataSet['tok2id'], idx, batchSize, maxLen, idx=inPuts[-1], dist_measurer=outDataSet['dist_measurer'], sample_rate=1.0)
         else:
-            attributes =  get_minibatch(outDataSet['attribute'], outDataSet['tok2id'], idx, batchSize, maxLen, idx=inPuts[-1], dist_measurer=outDataSet['dist_measurer'], sample_rate=0.1)
+            attributes =  getMiniBatch(outDataSet['attribute'], outDataSet['tok2id'], idx, batchSize, maxLen, idx=inPuts[-1], dist_measurer=outDataSet['dist_measurer'], sample_rate=0.1)
     elif modelType == 'seq2seq':
         
-        inPuts  = get_minibatch(srcData['data'], srcData['tok2id'], idx, batchSize, maxLen, sort=True)
-        outPuts = get_minibatch(tgtData['data'], tgtData['tok2id'], idx, batchSize, maxLen, idx=inPuts[-1])
+        inPuts  = getMiniBatch(srcData['data'], srcData['tok2id'], idx, batchSize, maxLen, sort=True)
+        outPuts = getMiniBatch(tgtData['data'], tgtData['tok2id'], idx, batchSize, maxLen, idx=inPuts[-1])
         attributes = (None, None, None, None, None)
     else:
         raise Exception('Unsupported model_type: %s' % modelType)

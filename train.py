@@ -166,13 +166,13 @@ for epoch in range(startEpoch, config['training']['epochs']):
             i = 50
 
         batchIdx = i / batchSize
-        re-escrever a funçao
+        
         inputContent, inputAux, outPut = data.miniBatch(src, tgt, i, batchSize, maxLength, config['model']['model_type'])
         
         inputLinesSrc, _, srcLens, srcMask, _ = inputContent
         inputIdsAux, _, auxLens, auxMask, _ = inputAux
         inputLinesTgt, outputLinesTgt, _, _, _ = outPut
-        
+        re-escrever a funçao do model
         decoderLogit, decoderProbs = model(inputLinesSrc, inputLinesTgt, srcMask, srcLens,
             inputIdsAux, auxLens, auxMask)
 
