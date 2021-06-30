@@ -167,7 +167,7 @@ for epoch in range(startEpoch, config['training']['epochs']):
 
         batchIdx = i / batchSize
         re-escrever a funçao
-        inputContent, inputAux, outPut = data.minibatch(src, tgt, i, batchSize, maxLength, config['model']['model_type'])
+        inputContent, inputAux, outPut = data.miniBatch(src, tgt, i, batchSize, maxLength, config['model']['model_type'])
         
         inputLinesSrc, _, srcLens, srcMask, _ = inputContent
         inputIdsAux, _, auxLens, auxMask, _ = inputAux

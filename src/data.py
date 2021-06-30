@@ -356,6 +356,16 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
     }
     return src, tgt
 
+def sampleReplace(lines, distMeasurer, sampleRate, corpusIdx):
+    """
+    replace sample_rate * batch_size lines with nearby examples (according to dist_measurer)
+    not exactly the same as the paper (words shared instead of jaccaurd during train) but same idea
+    """
+    out = [None for _ in range(len(lines))]
+    for i, line in enumerate(lines):
+        sims = distMeasurer.mostSimilar(corpusIdx + i)[1:]
+    
+
 def  sample_replace(lines, dist_measurer, sample_rate, corpus_idx):
     """
     replace sample_rate * batch_size lines with nearby examples (according to dist_measurer)
@@ -384,7 +394,52 @@ def  sample_replace(lines, dist_measurer, sample_rate, corpus_idx):
 
     return out
 
+def getMiniBatch(lines, tok2Id, index, BatchSize, maxLen, sort=False, idx=None, distMeasurer=None, sampleRate=0.0):
+    """Prepare minibatch."""
+    lines = [["<s>"]+ line[:maxLen] + ["<\s>"] for line in lines[index:index + BatchSize]]
+    
+    if distMeasurer is not None:
+        alterar a função sample_replace
+        lines = sample_replace(lines, distMeasurer, sampleRate, index)
+    
+    lens = [len(line) - 1 for line in lines]
+    maxLen = max(lens)
+    
+    unkId = tok2Id['<unk>']
+    inputLines = [tok2Id.get(w, unkId) for w in line[:-1] +
+                 [tok2Id["<pad>"]]* (maxLen - len(line) + 1 )
+                 for line in lines]
+    
+    outputLines = [[tok2Id.get(w, unkId) for w in line[1:]] +
+                   [tok2Id['<pad>']] * (maxLen - len(line) + 1) for line in lines
+                   ]
+    
+    mask = [
+        ([1] * l) + ([0] * (maxLen - l))
+        for l in lens
+    ]
+    
+    if sort:
+        idx = [x[0] for x in sorted(enumerate(lens), key=lambda x: -x[1])]
+        
+        
+    if idx is not None:
+        lens        = [lens[i] for i in idx]
+        inputLines  = [inputLines[i] for i in idx]
+        outputLines = [outputLines[i] for i in idx]
+        mask        = [mask[i] for i in idx]
+        
+    inputLines  = Variable(torch.LongTensor(inputLines))
+    outputLines = Variable(torch.LongTensor(outputLines))
+    mask        = Variable(torch.FloatTensor(mask))
 
+    if CUDA:
+        inputLines  = inputLines.cuda()
+        outputLines = outputLines.cuda()
+        mask        = mask.cuda()
+
+    return inputLines, outputLines, lens, mask, idx
+    
 def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=None,
         dist_measurer=None, sample_rate=0.0):
     """Prepare minibatch."""
@@ -441,6 +496,52 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
     return input_lines, output_lines, lens, mask, idx
 
 
+
+
+def miniBatch(srcData, tgtData, idx, batchSize, maxLen, modelType, isTest=False):
+    if not isTest:
+        useSource   = random.random() < 0.5
+        inDataSet   = srcData if useSource else tgtData
+        outDataSet  = inDataSet
+        attributeId = 0 if useSource else 1
+    else:
+        inDataSet   = srcData
+        outDataSet  = tgtData
+        attributeId = 1 
+    
+    arrumar aqui (get_minibatch)
+    inPuts  = get_minibatch(inDataSet["content"], inDataSet["tok2id"], idx, batchSize, maxLen, sort=True)
+    outPuts = get_minibatch(outDataSet["data"], outDataSet["tok2id"], idx, batchSize, maxLen, idx=inPuts[-1])
+    if modelType == "delete":
+        
+        # true length could be less than batch_size at edge of data
+        batchLen     = len(outPuts[0])
+        attributeIds = [attributeId for _ in range(batchLen)]
+        attributeIds = Variable(torch.LongTensor(attributeIds))
+        
+        if CUDA:
+            attributeIds = attributeIds.cuda()
+        
+        attributes = (attributeIds, None, None, None, None)
+    elif  modelType == "delete_retrieve":
+        if isTest:
+            # This dist_measurer has sentence attributes for values, so setting 
+            # the sample rate to 1 means the output is always replaced with an
+            # attribute. So we're still getting attributes even though
+            # the method is being fed content. 
+            attributes =  get_minibatch(inDataSet['content'], outDataSet['tok2id'], idx, batchSize, maxLen, idx=inPuts[-1], dist_measurer=outDataSet['dist_measurer'], sample_rate=1.0)
+        else:
+            attributes =  get_minibatch(outDataSet['attribute'], outDataSet['tok2id'], idx, batchSize, maxLen, idx=inPuts[-1], dist_measurer=outDataSet['dist_measurer'], sample_rate=0.1)
+    elif modelType == 'seq2seq':
+        
+        inPuts  = get_minibatch(srcData['data'], srcData['tok2id'], idx, batchSize, maxLen, sort=True)
+        outPuts = get_minibatch(tgtData['data'], tgtData['tok2id'], idx, batchSize, maxLen, idx=inPuts[-1])
+        attributes = (None, None, None, None, None)
+    else:
+        raise Exception('Unsupported model_type: %s' % modelType)
+    
+    return inPuts, attributes, outPuts
+        
 def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
     if not is_test:
         use_src = random.random() < 0.5
