@@ -46,6 +46,7 @@ def bleu(stats):
 
 def getBleu(hypotheses, reference):
     """Get validation BLEU score for dev set."""
+    stats = 0
     for hyp, ref in zip(hypotheses, reference):
         stats += np.array(bleuStats(hyp, ref))
     return 100 * bleu(stats)
@@ -174,12 +175,12 @@ def evaluateLpp(model, src, tgt, config):
     losses = []
     
     for i in range(0, len(src["data"]), config['data']['batch_size']):
-        sys.stdout.write("\r%s/%s..." % (j, len(src['data'])))
+        sys.stdout.write("\r%s/%s..." % (i, len(src['data'])))
         sys.stdout.flush()
         
         
         # get batch
-        inputContent, inputAux, output = data.miniBatch(src, tgt, i, config['data']['batch_size'], config['data']['max_len'], config['model']['model_type'], isTest=True)
+        inputContent, inputAux, output = data.minibatch(src, tgt, i, config['data']['batch_size'], config['data']['max_len'], config['model']['model_type'], is_test=True)
         inputLinesSrc, _, srcLens, srcMask, _  = inputContent
         inputIdsAux, _, auxLens, auxMask, _    = inputAux
         inputLinesTgt, outputLinesTgt, _, _, _ = output

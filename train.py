@@ -64,23 +64,24 @@ console.setFormatter(formatter)
 logging.getLogger('').addHandler(console)
 
 logging.info('Reading data ...')
-src, tgt = data.readDataSet(
-    srcFile=config['data']['src'],
+src, tgt = data.read_nmt_data(
+    src=config['data']['src'],
     config=config,
-    tgtFile=config['data']['tgt'],
-    attributeVocab=config['data']['attribute_vocab'],
-    useNgrams=config['data']['ngram_attributes']
+    tgt=config['data']['tgt'],
+    attribute_vocab=config['data']['attribute_vocab'],
+    ngram_attributes=config['data']['ngram_attributes']
 )
 
-srcTest, tgtTest = data.readDataSet(
-    srcFile=config['data']['src_test'],
+srcTest, tgtTest = data.read_nmt_data(
+    src=config['data']['src_test'],
     config=config,
-    tgtFile=config['data']['tgt_test'],
-    attributeVocab=config['data']['attribute_vocab'],
-    useNgrams=config['data']['ngram_attributes'],
-    trainSrc=src,
-    trainTgt=tgt
+    tgt=config['data']['tgt_test'],
+    attribute_vocab=config['data']['attribute_vocab'],
+    ngram_attributes=config['data']['ngram_attributes'],
+    train_src=src,
+    train_tgt=tgt
 )
+logging.info('...done!')
 
 logging.info('...done!')
 
@@ -166,7 +167,9 @@ for epoch in range(startEpoch, config['training']['epochs']):
 
         batchIdx = i / batchSize
         
-        inputContent, inputAux, outPut = data.miniBatch(src, tgt, i, batchSize, maxLength, config['model']['model_type'])
+        inputContent, inputAux, outPut = data.minibatch(
+            src, tgt, i, batchSize, maxLength, config['model']['model_type']
+            )
         
         inputLinesSrc, _, srcLens, srcMask, _ = inputContent
         inputIdsAux, _, auxLens, auxMask, _ = inputAux

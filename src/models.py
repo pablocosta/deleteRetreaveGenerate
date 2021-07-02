@@ -98,7 +98,7 @@ class SeqModel(nn.Module):
                 embedding_dim=self.options['emb_dim'])
             attrSize = self.options['emb_dim']
         
-        elif self.model_type == 'delete_retrieve':
+        elif self.modelType == 'delete_retrieve':
             self.attributeEncoder = encoders.LSTMEncoder(
                 self.options['emb_dim'],
                 self.options['src_hidden_dim'],
@@ -108,7 +108,7 @@ class SeqModel(nn.Module):
                 pack=False)
             attrSize = self.options['src_hidden_dim']
 
-        elif self.model_type == 'seq2seq':
+        elif self.modelType == 'seq2seq':
             attrSize = 0
         else:
             raise NotImplementedError('unknown model type: %s. Accepted values: [seq2seq, delete_retrieve, delete]' % self.model_type)
@@ -129,9 +129,9 @@ class SeqModel(nn.Module):
 
         self.softmax = nn.Softmax(dim=-1)
 
-        self.init_weights()
+        self.initWeights()
 
-    def init_weights(self):
+    def initWeights(self):
         """Initialize weights."""
         initRange = 0.1
         self.srcEmbedding.weight.data.uniform_(-initRange, initRange)
@@ -165,8 +165,8 @@ class SeqModel(nn.Module):
             cT = torch.cat((cT, aHt), -1)
             hT = torch.cat((hT, aHt), -1)
 
-        elif self.model_type == 'delete_retrieve':
-            attrEmb = self.src_embedding(inputAttr)
+        elif self.modelType == 'delete_retrieve':
+            attrEmb = self.srcEmbedding(inputAttr)
             _, (aHt, aCt) = self.attributeEncoder(attrEmb, attrLens, attrMask)
             if self.options['bidirectional']:
                 aHt = torch.cat((aHt[-1], aHt[-2]), 1)
@@ -193,7 +193,7 @@ class SeqModel(nn.Module):
         tgtOutputsReshape = tgtOutputs.contiguous().view(
             tgtOutputs.size()[0] * tgtOutputs.size()[1],
             tgtOutputs.size()[2])
-        decoderLogit = self.output_projection(tgtOutputsReshape)
+        decoderLogit = self.outputProjection(tgtOutputsReshape)
         decoderLogit = decoderLogit.view(
             tgtOutputs.size()[0],
             tgtOutputs.size()[1],
