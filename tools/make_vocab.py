@@ -17,5 +17,5 @@ for l in open(sys.argv[1]):
     for tok in l.strip().split():
         c[tok] += 1
 
-for tok, _ in c.most_common(int(sys.argv[2])):
+for tok in list(c):
     print(tok)
