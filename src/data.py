@@ -97,24 +97,24 @@ def extract_attributes(line, attribute_vocab, use_ngrams=False):
         # sort attribute markers by score and prepare for deletion
         content = " ".join(line)
         candidate_markers.sort(key=lambda x: x[1], reverse=True)
-        print(content)
-        input()
-        print("marquer and scores: ", candidate_markers)
+        #print(content)
+        #input()
+        #print("marquer and scores: ", candidate_markers)
         candidate_markers = [marker for (marker, score) in candidate_markers]
 
-        input()
+        #input()
         # delete based on highest score first
         
         attribute_markers = []
         for marker in candidate_markers:
-            print("marker: ", marker)
-            print("content: ", content)
+            #print("marker: ", marker)
+            #print("content: ", content)
             if marker in content:
                 attribute_markers.append(marker)
                 content = content.replace(marker, "")
         content = content.split()
-        print("dsaadasd")
-        print(content)
+        #print("dsaadasd")
+        #print(content)
     else:
         content = []
         attribute_markers = []
@@ -152,12 +152,7 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
         *[extract_attributes(line, pre_attr, pre_attr) for line in src_lines]
     ))
     ###o problema está no source content
-    print(src_lines[0])
-    print('--------------')
-    print(src_content[0])
-    print("----------------")
-    print(src_attribute[0])
-    input()
+
     src_tok2id, src_id2tok = build_vocab_maps(config['data']['src_vocab'])
     # train time: just pick attributes that are close to the current (using word distance)
     # we never need to do the TFIDF thing with the source because 

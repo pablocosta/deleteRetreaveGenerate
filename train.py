@@ -213,33 +213,35 @@ for epoch in range(startEpoch, config['training']['epochs']):
         continue
 
     logging.info('EPOCH %s COMPLETE. EVALUATING...' % epoch)
-    start = time.time()
-    model.eval()
-    
-    devLoss = evaluation.evaluateLpp(model, srcTest, tgtTest, config)
+    if epoch % 10 == 0:
+        #evaluate every 10 epochs
+        start = time.time()
+        model.eval()
+        
+        devLoss = evaluation.evaluateLpp(model, srcTest, tgtTest, config)
 
-    writer.add_scalar('eval/loss', devLoss, epoch)
+        writer.add_scalar('eval/loss', devLoss, epoch)
 
-    if args.bleu and epoch >= config['training'].get('inference_start_epoch', 1):
-        curMetric, editDistance, inputs, preds, golds, auxs = evaluation.inferenceMetrics(
-            model, srcTest, tgtTest, config)
+        if args.bleu and epoch >= config['training'].get('inference_start_epoch', 1):
+            curMetric, editDistance, inputs, preds, golds, auxs = evaluation.inferenceMetrics(
+                model, srcTest, tgtTest, config)
 
-        with open(workingDir + '/auxs.%s' % epoch, 'w') as f:
-            f.write('\n'.join(auxs) + '\n')
-        with open(workingDir + '/inputs.%s' % epoch, 'w') as f:
-            f.write('\n'.join(inputs) + '\n')
-        with open(workingDir + '/preds.%s' % epoch, 'w') as f:
-            f.write('\n'.join(preds) + '\n')
-        with open(workingDir + '/golds.%s' % epoch, 'w') as f:
-            f.write('\n'.join(golds) + '\n')
+            with open(workingDir + '/auxs.%s' % epoch, 'w') as f:
+                f.write('\n'.join(auxs) + '\n')
+            with open(workingDir + '/inputs.%s' % epoch, 'w') as f:
+                f.write('\n'.join(inputs) + '\n')
+            with open(workingDir + '/preds.%s' % epoch, 'w') as f:
+                f.write('\n'.join(preds) + '\n')
+            with open(workingDir + '/golds.%s' % epoch, 'w') as f:
+                f.write('\n'.join(golds) + '\n')
 
-        writer.add_scalar('eval/edit_distance', editDistance, epoch)
-        writer.add_scalar('eval/bleu', curMetric, epoch)
+            writer.add_scalar('eval/edit_distance', editDistance, epoch)
+            writer.add_scalar('eval/bleu', curMetric, epoch)
 
-    else:
-        cur_metric = devLoss
+        else:
+            cur_metric = devLoss
 
-    model.train()
+        model.train()
 
     logging.info('METRIC: %s. TIME: %.2fs CHECKPOINTING...' % (
         curMetric, (time.time() - start)))
