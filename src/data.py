@@ -87,26 +87,34 @@ def extract_attributes(line, attribute_vocab, use_ngrams=False):
                 grams.extend(i_grams)
             except RuntimeError:
                 continue
-
+        
         # filter ngrams by whether they appear in the attribute_vocab
         candidate_markers = [
             (gram, attribute_vocab[gram])
             for gram in grams if gram in attribute_vocab
         ]
-
+        
         # sort attribute markers by score and prepare for deletion
         content = " ".join(line)
         candidate_markers.sort(key=lambda x: x[1], reverse=True)
-
+        print(content)
+        input()
+        print("marquer and scores: ", candidate_markers)
         candidate_markers = [marker for (marker, score) in candidate_markers]
+
+        input()
         # delete based on highest score first
+        
         attribute_markers = []
         for marker in candidate_markers:
+            print("marker: ", marker)
+            print("content: ", content)
             if marker in content:
                 attribute_markers.append(marker)
                 content = content.replace(marker, "")
         content = content.split()
-        
+        print("dsaadasd")
+        print(content)
     else:
         content = []
         attribute_markers = []
@@ -139,9 +147,17 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
         pre_attr = post_attr = set([x.strip() for x in open(attribute_vocab)])
 
     src_lines = [l.strip().lower().split() for l in open(src, 'r')]
+    
     src_lines, src_content, src_attribute = list(zip(
         *[extract_attributes(line, pre_attr, pre_attr) for line in src_lines]
     ))
+    ###o problema está no source content
+    print(src_lines[0])
+    print('--------------')
+    print(src_content[0])
+    print("----------------")
+    print(src_attribute[0])
+    input()
     src_tok2id, src_id2tok = build_vocab_maps(config['data']['src_vocab'])
     # train time: just pick attributes that are close to the current (using word distance)
     # we never need to do the TFIDF thing with the source because 
@@ -224,10 +240,12 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
     """Prepare minibatch."""
     # FORCE NO SORTING because we care about the order of outputs
     #   to compare across systems
+    
     lines = [
         ['<s>'] + line[:max_len] + ['</s>']
         for line in lines[index:index + batch_size]
     ]
+
 
     if dist_measurer is not None:
         lines = sample_replace(lines, dist_measurer, sample_rate, index)
@@ -304,6 +322,7 @@ def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
     elif model_type == 'delete_retrieve':
         inputs =  get_minibatch(
             in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True)
+        
         outputs = get_minibatch(
             out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[-1])
 

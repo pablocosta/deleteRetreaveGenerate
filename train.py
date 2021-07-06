@@ -72,6 +72,7 @@ src, tgt = data.read_nmt_data(
     ngram_attributes=config['data']['ngram_attributes']
 )
 
+
 srcTest, tgtTest = data.read_nmt_data(
     src=config['data']['src_test'],
     config=config,
@@ -174,7 +175,6 @@ for epoch in range(startEpoch, config['training']['epochs']):
         inputLinesSrc, _, srcLens, srcMask, _ = inputContent
         inputIdsAux, _, auxLens, auxMask, _ = inputAux
         inputLinesTgt, outputLinesTgt, _, _, _ = outPut
-        
         decoderLogit, decoderProbs = model(inputLinesSrc, inputLinesTgt, srcMask, srcLens,
             inputIdsAux, auxLens, auxMask)
 
