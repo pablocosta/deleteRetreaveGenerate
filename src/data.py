@@ -230,7 +230,7 @@ def sample_replace(lines, dist_measurer, sample_rate, corpus_idx):
     return out
 
 
-def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=None,
+def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=True, idx=None,
         dist_measurer=None, sample_rate=0.0):
     """Prepare minibatch."""
     # FORCE NO SORTING because we care about the order of outputs
@@ -244,8 +244,10 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
 
     if dist_measurer is not None:
         lines = sample_replace(lines, dist_measurer, sample_rate, index)
-
+    #print("lens: ")
+    
     lens = [len(line) - 1 for line in lines]
+    #print(lens)
     max_len = max(lens)
 
     unk_id = tok2id['<unk>']
@@ -271,6 +273,9 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
         idx = [x[0] for x in sorted(enumerate(lens), key=lambda x: -x[1])]
 
     if idx is not None:
+        #print("idx: ")
+        #
+        # print(idx)
         lens = [lens[j] for j in idx]
         input_lines = [input_lines[j] for j in idx]
         output_lines = [output_lines[j] for j in idx]
