@@ -1,3 +1,9 @@
+"""
+python makeShapleyScores.py [vocab] [corpus1] [corpus2] r
+subsets a [vocab] file by finding the words most associated with
+one of two corpuses. threshold is r ( # in corpus_a  / # in corpus_b )
+uses ngrams
+"""
 import numpy as np
 from nltk import ngrams
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
@@ -32,46 +38,55 @@ class shapleyCalculator(object):
             self.explainer = shap.Explainer(self.classifier)
             
         else:
+            
+          
+            self.vectorizerSource  = CountVectorizer(tokenizer=tokenize)  
+            self.vectorizerTarget  = CountVectorizer(tokenizer=tokenize) 
+            self.sourceMatrix      = self.vectorizerSource.fit_transform(sourceCorpus+targetCorpus[:50])
+            self.sourceVocab       = self.vectorizerSource.vocabulary_
+            self.targetMatrix      = self.vectorizerTarget.fit_transform(targetCorpus+sourceCorpus[:50])
+            self.targetVocab       = self.vectorizerTarget.vocabulary_
+            self.featureSourceName = self.vectorizerSource.get_feature_names()
+            self.featureTargetName = self.vectorizerTarget.get_feature_names()
 
             
-            self.vectorizer    = CountVectorizer(tokenizer=tokenize)  
-            sourceMatrix       = self.vectorizer.fit_transform(sourceCorpus)
-            self.sourceVocab   = self.vectorizer.vocabulary_
-            targetMatrix  = self.vectorizer.fit_transform(targetCorpus)
-            self.targetVocab   = self.vectorizer.vocabulary_
-            _ = self.vectorizer.fit_transform(sourceCorpus + targetCorpus)
+            self.labelsSource      = np.concatenate((np.zeros(len(sourceCorpus), dtype=np.int8), np.ones(50, dtype=np.int8)))
+            self.labelsTarget      = np.concatenate((np.ones(len(targetCorpus),  dtype=np.int8), np.zeros(50, dtype=np.int8)))
+
             
-            
-            labels             = np.concatenate((np.zeros(len(sourceCorpus)), np.ones(len(targetCorpus))), axis=0)
-            labelsSource = np.zeros(len(sourceCorpus))
-            labelsTarget = np.ones(len(targetCorpus))
-            
-            #train classifiers
-            self.classifierSource, self.classifierTarget = self.trainNgramClassifier(xgboost.XGBClassifier(), xgboost.XGBClassifier(), sourceMatrix, targetMatrix, labelsSource, labelsTarget, labels)
-            self.explainerSource     = shap.TreeExplainer(self.classifierSource)
-            self.explainerTarget     = shap.TreeExplainer(self.classifierTarget)
-            
-    def trainNgramClassifier(self, classifierSource, classifierTarget, featureVectorSource, featureVectorTarget, labelsSource, labelsTarget):
+    def trainNgramClassifier(self):
         # fit the training dataset on the classifier
+        classifierSource = xgboost.XGBClassifier(n_jobs=-1)
+        classifierSource.fit(self.sourceMatrix, self.labelsSource)
+        classifierTarget = xgboost.XGBClassifier(n_jobs=-1)
+        classifierTarget.fit(self.targetMatrix, self.labelsTarget)
+
+        self.explainerSource  = shap.TreeExplainer(classifierSource)
+        self.explainerTarget  = shap.TreeExplainer(classifierTarget)
         
-        classifierSource.fit(featureVectorSource, labelsSource)
-        classifierTarget.fit(featureVectorTarget, labelsTarget)
-        
-        return classifierSource, classifierTarget
     def getTransformClassifier(self):
         classifier = transformers.pipeline('sentiment-analysis', return_all_scores=True)
         return classifier
      
-    def ngramShapley(self, data, lmbda=0.5):
-        sourceValues = self.explainerSource.shap_values(self.vectorizer.transform([data]))
-        postValues   = self.classifierTarget.shap_values(self.vectorizer.transform([data]))
+    def ngramShapley(self, data, dataIndex, lmbda=0.5):
+        sourceValues = self.explainerSource(self.sourceMatrix[dataIndex]).values
+        postValues = self.explainerTarget(self.targetMatrix[dataIndex]).values
+        #https://towardsdatascience.com/hey-model-why-do-you-say-this-is-spam-7c945cc531f
         ngramValues  = {}
         #To-do: validar
         for gram in tokenize(data):
-            i = sourceValues[self.vectorizer.vocabulary_[gram]]
-            j = postValues[self.vectorizer.vocabulary_[gram]]
-            ngramValues[gram] = [(i + lmbda) / (j + lmbda), (j + lmbda) / (i + lmbda)]
-        
+             
+            if gram not in self.featureSourceName:
+                i = 0.0
+            else:
+                i = sourceValues[0, self.featureSourceName.index(gram[0])]
+            
+            if gram not in self.featureTargetName:
+                j = 0.0
+            else:
+                j = postValues[0, self.featureTargetName.index(gram[0])] 
+            ngramValues[gram] = ((i + lmbda) / (j + lmbda), (j + lmbda) / (i + lmbda))
+            
         return ngramValues        
         
     def transformerShapley(self, data, lmbda=0.5):
@@ -86,7 +101,7 @@ class shapleyCalculator(object):
             
             i = np.sum([sourceValues[data.split(" ").index(i)] for i in gram]), np.sum([sourceValues[data.split(" ").index(i)] for i in gram])
             j = np.sum([sourceValues[data.split(" ").index(i)] for i in gram]), np.sum([postValues[data.split(" ").index(i)] for i in gram])
-            ngramValues[gram] = [(i + lmbda) / (j + lmbda), (j + lmbda) / (i + lmbda)]
+            ngramValues[gram] = ((i + lmbda) / (j + lmbda), (j + lmbda) / (i + lmbda))
                 #ngramValues[gram] = [sourceValues[self.vectorizer.vocabulary_[gram]], postValues[self.vectorizer.vocabulary_[gram]]]
         
                     
@@ -129,6 +144,7 @@ corpus2 = unk_corpus(corpus2_sentences)
 
 
 sc = shapleyCalculator(corpus1, corpus2, tokenize, "ngram")
+sc.trainNgramClassifier()
 #para ambos fazer o for ngram nas respectivas Funcoes
     #para o transformer fazer o sum 
     #para o outro não
@@ -136,8 +152,8 @@ sc = shapleyCalculator(corpus1, corpus2, tokenize, "ngram")
     
 print("marker", "negative_score", "positive_score")
 def calculate_attribute_markers(corpus):
-    for sentence in tqdm(corpus):
-        salience = sc.ngramShapley(sentence)
+    for i, sentence in enumerate(tqdm(corpus)):
+        salience = sc.ngramShapley(sentence, i)
         print(salience)
         input()
 
