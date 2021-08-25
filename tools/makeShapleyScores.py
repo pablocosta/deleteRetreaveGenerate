@@ -29,13 +29,14 @@ def tokenize(text):
         grams.extend(i_grams)
     return grams
 
+
 class shapleyCalculator(object):
     
     def __init__(self, sourceCorpus, targetCorpus, tokenize, shapleyForm):
         
         if shapleyForm == "transformer":
-            self.classifier = self.getTransformClassifier()
-            self.explainer = shap.Explainer(self.classifier)
+            classifier = self.getTransformClassifier()
+            self.explainerNeural = shap.Explainer(classifier)
             
         else:
             
@@ -92,18 +93,16 @@ class shapleyCalculator(object):
     def transformerShapley(self, data, lmbda=0.5):
         
         # explain the predictions of the pipeline on the first two samples
-        shapValues  = self.explainer(data)
+        shapValues = self.explainerNeural(data)
+        posValues  = shapValues[:,:,"POSITIVE"].values
+        negValues  = shapValues[:,:,"NEGATIVE"].values
         
-        sourceValues = shapValues[:,"POSITIVE"]
-        postValues   = shapValues[:,"NEGATIVE"]
         ngramValues  = {}
         for gram in tokenize(data):
-            
-            i = np.sum([sourceValues[data.split(" ").index(i)] for i in gram]), np.sum([sourceValues[data.split(" ").index(i)] for i in gram])
-            j = np.sum([sourceValues[data.split(" ").index(i)] for i in gram]), np.sum([postValues[data.split(" ").index(i)] for i in gram])
-            ngramValues[gram] = ((i + lmbda) / (j + lmbda), (j + lmbda) / (i + lmbda))
-                #ngramValues[gram] = [sourceValues[self.vectorizer.vocabulary_[gram]], postValues[self.vectorizer.vocabulary_[gram]]]
-        
+
+            i = np.sum([np.sum(x) for x in negValues[data.find(gram):data.find(gram)+len(gram)]])
+            j = np.sum([np.sum(x) for x in posValues[data.find(gram):data.find(gram)+len(gram)]])
+            ngramValues[gram] = ((i + lmbda) / (j + lmbda), (j + lmbda) / (i + lmbda))       
                     
         return ngramValues                
     
@@ -143,8 +142,9 @@ corpus1 = unk_corpus(corpus1_sentences)
 corpus2 = unk_corpus(corpus2_sentences)
 
 
-sc = shapleyCalculator(corpus1, corpus2, tokenize, "ngram")
-sc.trainNgramClassifier()
+sc = shapleyCalculator(corpus1, corpus2, tokenize, "transformer")
+
+#sc.trainNgramClassifier()
 #para ambos fazer o for ngram nas respectivas Funcoes
     #para o transformer fazer o sum 
     #para o outro não
@@ -153,13 +153,12 @@ sc.trainNgramClassifier()
 print("marker", "negative_score", "positive_score")
 def calculate_attribute_markers(corpus):
     for i, sentence in enumerate(tqdm(corpus)):
-        salience = sc.ngramShapley(sentence, i)
-        print(salience)
-        input()
-
-        #if max(negativeSalience, positiveSalience) > r:
-            #print(gram, negativeSalience, positiveSalience)
-            #print(gram)
+        salience = sc.transformerShapley(sentence, i)
+        for k in salience.keys():
+            negativeSalience, positiveSalience = salience[k]
+            if max(negativeSalience, positiveSalience) > r:
+                print(k, negativeSalience, positiveSalience)
+            
 
 
 calculate_attribute_markers(corpus1)
