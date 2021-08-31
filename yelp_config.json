@@ -4,7 +4,7 @@
     "learning_rate": 0.0003,
     "max_norm": 3.0,
     "epochs": 70,
-    "batches_per_report": 200,
+    "batches_per_report": 500,
     "batches_per_sampling": 500,
     "random_seed": 1
   },
